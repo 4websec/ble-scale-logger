@@ -1,0 +1,10 @@
+# Core dependency
+bleak>=0.21
+
+# Optional — install only for the features you use:
+#   pip install win11toast    # Windows desktop notifications
+#   pip install gspread       # Google Sheets append (clinical/remote visibility)
+#
+# The logger degrades gracefully if the optional packages are absent:
+# missing win11toast -> notifications disabled; missing gspread -> Sheets disabled.
+# Local CSV logging never depends on either.

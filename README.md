@@ -1,5 +1,9 @@
 # BLE Weight-Scale Logger (Chipsea / Conair WW934ZF)
 
+[![CI](https://github.com/4websec/ble-scale-logger/actions/workflows/ci.yml/badge.svg)](https://github.com/4websec/ble-scale-logger/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+
 Real-time, passive Bluetooth Low Energy weight logger for the **Conair / Weight
 Watchers WW934ZF** body scale (and other Chipsea-module scales). It listens for
 the scale's BLE *advertisements* — no pairing, no connection, no vendor app — and
@@ -105,6 +109,26 @@ Readings **≥ threshold** are attributed to `--over-name`, below to `--patient`
 > or run with `--any` to match any Chipsea scale nearby.
 
 ---
+
+## Sample output
+
+Console (placeholder names — real runs are weight-only health data and stay local):
+
+```text
+00:14:31 INFO Scanning for E8:CB:ED:4E:23:0F -> weights.csv (Ctrl+C to stop)
+00:15:02 INFO reading   172.8 lb /  78.38 kg  Adult                  [E8:CB:ED:4E:23:0F]
+08:03:11 INFO reading   116.4 lb /  52.80 kg  PATIENT-01             [E8:CB:ED:4E:23:0F]
+08:03:11 WARNING reading 119.0 lb / 53.98 kg  PATIENT-01  ALERT: +2.6 lb since 06/11 (>=2/day)  [E8:CB:ED:4E:23:0F]
+```
+
+CSV:
+
+```csv
+timestamp_iso,weight_lb,weight_kg,state_hex,event,address,person,dob,alert
+2026-06-12T05:15:02+00:00,172.8,78.38,0x03,reading,E8:CB:ED:4E:23:0F,Adult,,
+2026-06-12T13:03:11+00:00,116.4,52.80,0x03,reading,E8:CB:ED:4E:23:0F,PATIENT-01,1970-01-01,
+2026-06-13T13:03:11+00:00,119.0,53.98,0x03,reading,E8:CB:ED:4E:23:0F,PATIENT-01,1970-01-01,+2.6 lb since 06/11 (>=2/day)
+```
 
 ## CSV format
 

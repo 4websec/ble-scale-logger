@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: ruff · black · mypy (strict)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install lint tools
+        run: pip install ruff black mypy
+
+      - name: ruff (lint)
+        run: ruff check .
+
+      - name: black (format check)
+        run: black --check .
+
+      - name: mypy (strict type check)
+        # Config (including --strict and ignore_missing_imports for the untyped
+        # BLE libs) lives in pyproject.toml, so the BLE deps need not be installed.
+        run: mypy scale_weight_logger.py

@@ -417,7 +417,7 @@ class WeightLogger:
         self._locked = False
 
     async def watchdog(self) -> None:
-        """Fallback: if the scale sleeps without a 0 beacon, record + close the session."""
+        """Fallback: record + close a weigh-in if the scale sleeps with no 0 beacon."""
         loop = asyncio.get_running_loop()
         while True:
             await asyncio.sleep(WATCHDOG_INTERVAL_S)
@@ -437,7 +437,7 @@ async def io_worker(
     sheet: SheetAppender,
     history: HistoryTracker,
 ) -> None:
-    """Consume events: one locked reading per weigh-in -> CHF check, CSV, toast, Sheets."""
+    """Consume events: one locked reading per weigh-in -> CHF check, CSV, toast."""
     while True:
         ev = await queue.get()
         try:
@@ -467,8 +467,13 @@ async def run(cfg: argparse.Namespace) -> None:
     """Wire up sinks and scan until interrupted, auto-restarting on stack errors."""
     queue: asyncio.Queue[ReadingEvent] = asyncio.Queue()
     wlogger = WeightLogger(
-        cfg.match_any, queue, cfg.threshold, cfg.over_name, cfg.patient,
-        cfg.over_dob, cfg.patient_dob,
+        cfg.match_any,
+        queue,
+        cfg.threshold,
+        cfg.over_name,
+        cfg.patient,
+        cfg.over_dob,
+        cfg.patient_dob,
     )
     history = HistoryTracker(cfg.csv)  # loads prior readings before the worker starts
     csv_sink = CsvSink(cfg.csv)
@@ -501,7 +506,9 @@ async def run(cfg: argparse.Namespace) -> None:
             except BleakError as exc:
                 # Bluetooth stack hiccup (radio reset, adapter busy): back off + retry
                 # rather than dying, so an unattended monitor self-heals.
-                logger.error("scanner error: %s — restarting in %ss", exc, SCAN_RESTART_BACKOFF_S)
+                logger.error(
+                    "scanner error: %s — restarting in %ss", exc, SCAN_RESTART_BACKOFF_S
+                )
                 await asyncio.sleep(SCAN_RESTART_BACKOFF_S)
     finally:
         worker.cancel()
@@ -511,29 +518,67 @@ async def run(cfg: argparse.Namespace) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Real-time BLE weight logger (CHF).")
-    parser.add_argument("--csv", type=Path, default=Path("scale_weight_log.csv"),
-                        help="CSV log path (default: scale_weight_log.csv).")
-    parser.add_argument("--log", type=Path, default=Path("scale_logger.log"),
-                        help="Diagnostic log path (default: scale_logger.log).")
-    parser.add_argument("--patient", default="CHF-01",
-                        help="Label for readings BELOW the threshold (the CHF patient).")
-    parser.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD_LB,
-                        help=f"Weight (lb) at/above which a reading is attributed to "
-                             f"--over-name (default: {DEFAULT_THRESHOLD_LB}).")
-    parser.add_argument("--over-name", dest="over_name", default=DEFAULT_OVER_NAME,
-                        help=f"Person at/above the threshold (default: {DEFAULT_OVER_NAME}).")
-    parser.add_argument("--patient-dob", dest="patient_dob", default="",
-                        help="DOB (YYYY-MM-DD) for the below-threshold person.")
-    parser.add_argument("--over-dob", dest="over_dob", default="",
-                        help="DOB (YYYY-MM-DD) for the at/above-threshold person.")
-    parser.add_argument("--any", dest="match_any", action="store_true",
-                        help="Log any Chipsea scale, not just the known MAC.")
-    parser.add_argument("--no-toast", action="store_true",
-                        help="Disable desktop notifications.")
-    parser.add_argument("--sheet-id", default=None,
-                        help="Google Sheet ID to append final readings to (optional).")
-    parser.add_argument("--sa-json", default=os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"),
-                        help="Service-account JSON for Google Sheets (optional).")
+    parser.add_argument(
+        "--csv",
+        type=Path,
+        default=Path("scale_weight_log.csv"),
+        help="CSV log path (default: scale_weight_log.csv).",
+    )
+    parser.add_argument(
+        "--log",
+        type=Path,
+        default=Path("scale_logger.log"),
+        help="Diagnostic log path (default: scale_logger.log).",
+    )
+    parser.add_argument(
+        "--patient",
+        default="CHF-01",
+        help="Label for readings BELOW the threshold (the CHF patient).",
+    )
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=DEFAULT_THRESHOLD_LB,
+        help=f"Weight (lb) at/above which a reading is attributed to "
+        f"--over-name (default: {DEFAULT_THRESHOLD_LB}).",
+    )
+    parser.add_argument(
+        "--over-name",
+        dest="over_name",
+        default=DEFAULT_OVER_NAME,
+        help=f"Person at/above the threshold (default: {DEFAULT_OVER_NAME}).",
+    )
+    parser.add_argument(
+        "--patient-dob",
+        dest="patient_dob",
+        default="",
+        help="DOB (YYYY-MM-DD) for the below-threshold person.",
+    )
+    parser.add_argument(
+        "--over-dob",
+        dest="over_dob",
+        default="",
+        help="DOB (YYYY-MM-DD) for the at/above-threshold person.",
+    )
+    parser.add_argument(
+        "--any",
+        dest="match_any",
+        action="store_true",
+        help="Log any Chipsea scale, not just the known MAC.",
+    )
+    parser.add_argument(
+        "--no-toast", action="store_true", help="Disable desktop notifications."
+    )
+    parser.add_argument(
+        "--sheet-id",
+        default=None,
+        help="Google Sheet ID to append final readings to (optional).",
+    )
+    parser.add_argument(
+        "--sa-json",
+        default=os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"),
+        help="Service-account JSON for Google Sheets (optional).",
+    )
     parser.add_argument("--verbose", action="store_true", help="Debug logging.")
     return parser.parse_args()
 
@@ -542,7 +587,9 @@ def main() -> None:
     cfg = parse_args()
     handlers: list[logging.Handler] = [
         logging.StreamHandler(),
-        RotatingFileHandler(cfg.log, maxBytes=1_000_000, backupCount=3, encoding="utf-8"),
+        RotatingFileHandler(
+            cfg.log, maxBytes=1_000_000, backupCount=3, encoding="utf-8"
+        ),
     ]
     logging.basicConfig(
         level=logging.DEBUG if cfg.verbose else logging.INFO,

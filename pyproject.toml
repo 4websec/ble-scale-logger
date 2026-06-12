@@ -1,0 +1,23 @@
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+# pycodestyle, pyflakes, isort, pep8-naming, pyupgrade, bugbear, comprehensions
+select = ["E", "F", "I", "N", "UP", "B", "C4"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+# Third-party libraries without type stubs. They are imported lazily and the
+# logger degrades gracefully if absent; we don't type-check their internals.
+[[tool.mypy.overrides]]
+module = ["bleak.*", "win11toast.*", "gspread.*"]
+ignore_missing_imports = true
